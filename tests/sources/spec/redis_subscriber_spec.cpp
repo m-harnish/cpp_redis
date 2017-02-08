@@ -1,4 +1,27 @@
+// The MIT License (MIT)
+//
+// Copyright (c) 2015-2017 Simon Ninon <simon.ninon@gmail.com>
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
 #include <cpp_redis/redis_client.hpp>
+#include <cpp_redis/redis_error.hpp>
 #include <cpp_redis/redis_subscriber.hpp>
 #include <gtest/gtest.h>
 
@@ -129,7 +152,7 @@ TEST(RedisSubscriber, SubConnectedCommitConnected) {
   sub.connect();
   client.connect();
 
-  std::atomic_bool callback_run(false);
+  std::atomic<bool> callback_run = ATOMIC_VAR_INIT(false);
   sub.subscribe("/chan",
     [&](const std::string&, const std::string&) {
       callback_run = true;
@@ -156,7 +179,7 @@ TEST(RedisSubscriber, SubNotConnectedCommitConnected) {
 
   client.connect();
 
-  std::atomic_bool callback_run(false);
+  std::atomic<bool> callback_run = ATOMIC_VAR_INIT(false);
   sub.subscribe("/chan",
     [&](const std::string&, const std::string&) {
       callback_run = true;
@@ -183,7 +206,7 @@ TEST(RedisSubscriber, SubNotConnectedCommitNotConnectedCommitConnected) {
 
   client.connect();
 
-  std::atomic_bool callback_run(false);
+  std::atomic<bool> callback_run = ATOMIC_VAR_INIT(false);
   sub.subscribe("/chan",
     [&](const std::string&, const std::string&) {
       callback_run = true;
@@ -210,7 +233,7 @@ TEST(RedisSubscriber, SubscribeSomethingPublished) {
   sub.connect();
   client.connect();
 
-  std::atomic_bool callback_run(false);
+  std::atomic<bool> callback_run = ATOMIC_VAR_INIT(false);
   sub.subscribe("/chan",
     [&](const std::string& channel, const std::string& message) {
       EXPECT_TRUE(channel == "/chan");
@@ -240,7 +263,7 @@ TEST(RedisSubscriber, SubscribeMultiplePublished) {
   sub.connect();
   client.connect();
 
-  std::atomic_int number_times_called(0);
+  std::atomic<int> number_times_called = ATOMIC_VAR_INIT(0);
   sub.subscribe("/chan",
     [&](const std::string& channel, const std::string& message) {
       EXPECT_TRUE(channel == "/chan");
@@ -273,7 +296,7 @@ TEST(RedisSubscriber, SubscribeNothingPublished) {
   sub.connect();
   client.connect();
 
-  std::atomic_bool callback_run(false);
+  std::atomic<bool> callback_run = ATOMIC_VAR_INIT(false);
   sub.subscribe("/chan",
     [&](const std::string&, const std::string&) {
       callback_run = true;
@@ -306,8 +329,8 @@ TEST(RedisSubscriber, MultipleSubscribeSomethingPublished) {
     }
   };
 
-  std::atomic_bool callback_1_run(false);
-  std::atomic_bool callback_2_run(false);
+  std::atomic<bool> callback_1_run = ATOMIC_VAR_INIT(false);
+  std::atomic<bool> callback_2_run = ATOMIC_VAR_INIT(false);
   sub.subscribe("/chan_1",
     [&](const std::string& channel, const std::string& message) {
       EXPECT_TRUE(channel == "/chan_1");
@@ -347,7 +370,7 @@ TEST(RedisSubscriber, PSubscribeSomethingPublished) {
   sub.connect();
   client.connect();
 
-  std::atomic_bool callback_run(false);
+  std::atomic<bool> callback_run = ATOMIC_VAR_INIT(false);
   sub.psubscribe("/chan/*",
     [&](const std::string& channel, const std::string& message) {
       EXPECT_TRUE(channel == "/chan/hello");
@@ -377,7 +400,7 @@ TEST(RedisSubscriber, PSubscribeMultiplePublished) {
   sub.connect();
   client.connect();
 
-  std::atomic_int number_times_called(0);
+  std::atomic<int> number_times_called = ATOMIC_VAR_INIT(0);
   sub.psubscribe("/chan/*",
     [&](const std::string& channel, const std::string& message) {
       ++number_times_called;
@@ -417,7 +440,7 @@ TEST(RedisSubscriber, PSubscribeNothingPublished) {
   sub.connect();
   client.connect();
 
-  std::atomic_bool callback_run(false);
+  std::atomic<bool> callback_run = ATOMIC_VAR_INIT(false);
   sub.psubscribe("/chan/*",
     [&](const std::string&, const std::string&) {
       callback_run = true;
@@ -450,8 +473,8 @@ TEST(RedisSubscriber, MultiplePSubscribeSomethingPublished) {
     }
   };
 
-  std::atomic_bool callback_1_run(false);
-  std::atomic_bool callback_2_run(false);
+  std::atomic<bool> callback_1_run = ATOMIC_VAR_INIT(false);
+  std::atomic<bool> callback_2_run = ATOMIC_VAR_INIT(false);
   sub.psubscribe("/chan/*",
     [&](const std::string& channel, const std::string& message) {
       EXPECT_TRUE(channel == "/chan/1");
@@ -499,8 +522,8 @@ TEST(RedisSubscriber, Unsubscribe) {
     }
   };
 
-  std::atomic_bool callback_1_run(false);
-  std::atomic_bool callback_2_run(false);
+  std::atomic<bool> callback_1_run = ATOMIC_VAR_INIT(false);
+  std::atomic<bool> callback_2_run = ATOMIC_VAR_INIT(false);
   sub.subscribe("/chan_1",
     [&](const std::string&, const std::string&) {
       callback_1_run = true;
@@ -540,8 +563,8 @@ TEST(RedisSubscriber, PUnsubscribe) {
     }
   };
 
-  std::atomic_bool callback_1_run(false);
-  std::atomic_bool callback_2_run(false);
+  std::atomic<bool> callback_1_run = ATOMIC_VAR_INIT(false);
+  std::atomic<bool> callback_2_run = ATOMIC_VAR_INIT(false);
   sub.psubscribe("/chan_1/*",
     [&](const std::string&, const std::string&) {
       callback_1_run = true;

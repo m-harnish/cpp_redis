@@ -1,4 +1,27 @@
+// The MIT License (MIT)
+//
+// Copyright (c) 2015-2017 Simon Ninon <simon.ninon@gmail.com>
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
 #include <cpp_redis/redis_client.hpp>
+#include <cpp_redis/redis_error.hpp>
 #include <gtest/gtest.h>
 
 TEST(RedisClient, ValidConnectionDefaultParams) {
@@ -98,7 +121,7 @@ TEST(RedisClient, SyncCommitTimeout) {
   cpp_redis::redis_client client;
 
   client.connect();
-  volatile std::atomic_bool callback_exit(false);
+  volatile std::atomic<bool> callback_exit = ATOMIC_VAR_INIT(false);
   client.send({"GET", "HELLO"}, [&](cpp_redis::reply&) {
     std::this_thread::sleep_for(std::chrono::seconds(1));
     callback_exit = true;
@@ -113,7 +136,7 @@ TEST(RedisClient, SyncCommitNoTimeout) {
   cpp_redis::redis_client client;
 
   client.connect();
-  std::atomic_bool callback_exit(false);
+  std::atomic<bool> callback_exit = ATOMIC_VAR_INIT(false);
   client.send({"GET", "HELLO"}, [&](cpp_redis::reply&) {
     std::this_thread::sleep_for(std::chrono::seconds(1));
     callback_exit = true;
@@ -140,7 +163,7 @@ TEST(RedisClient, SendConnectedSyncCommitConnected) {
 
   client.connect();
 
-  std::atomic_bool callback_run(false);
+  std::atomic<bool> callback_run = ATOMIC_VAR_INIT(false);
   client.send({"GET", "HELLO"}, [&](cpp_redis::reply&) {
     callback_run = true;
   });
@@ -152,7 +175,7 @@ TEST(RedisClient, SendConnectedSyncCommitConnected) {
 TEST(RedisClient, SendNotConnectedSyncCommitConnected) {
   cpp_redis::redis_client client;
 
-  std::atomic_bool callback_run(false);
+  std::atomic<bool> callback_run = ATOMIC_VAR_INIT(false);
   client.send({"GET", "HELLO"}, [&](cpp_redis::reply&) {
     callback_run = true;
   });
@@ -165,7 +188,7 @@ TEST(RedisClient, SendNotConnectedSyncCommitConnected) {
 TEST(RedisClient, SendNotConnectedSyncCommitNotConnectedSyncCommitConnected) {
   cpp_redis::redis_client client;
 
-  std::atomic_bool callback_run(false);
+  std::atomic<bool> callback_run = ATOMIC_VAR_INIT(false);
   client.send({"GET", "HELLO"}, [&](cpp_redis::reply&) {
     callback_run = true;
   });
@@ -236,7 +259,7 @@ TEST(RedisClient, DisconnectionHandlerWithQuit) {
   cpp_redis::redis_client client;
   std::condition_variable cv;
 
-  std::atomic_bool disconnection_handler_called(false);
+  std::atomic<bool> disconnection_handler_called = ATOMIC_VAR_INIT(false);
   client.connect("127.0.0.1", 6379, [&](cpp_redis::redis_client&) {
     disconnection_handler_called = true;
     cv.notify_all();
@@ -256,7 +279,7 @@ TEST(RedisClient, DisconnectionHandlerWithoutQuit) {
   cpp_redis::redis_client client;
   std::condition_variable cv;
 
-  std::atomic_bool disconnection_handler_called(false);
+  std::atomic<bool> disconnection_handler_called = ATOMIC_VAR_INIT(false);
   client.connect("127.0.0.1", 6379, [&](cpp_redis::redis_client&) {
     disconnection_handler_called = true;
     cv.notify_all();

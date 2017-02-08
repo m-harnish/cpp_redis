@@ -1,22 +1,43 @@
+// The MIT License (MIT)
+//
+// Copyright (c) 2015-2017 Simon Ninon <simon.ninon@gmail.com>
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
 #include <cpp_redis/logger.hpp>
 #include <cpp_redis/redis_error.hpp>
 #include <cpp_redis/redis_subscriber.hpp>
 
 namespace cpp_redis {
 
-redis_subscriber::redis_subscriber(const std::shared_ptr<network::io_service>& io_service)
-: m_client(io_service) {
+redis_subscriber::redis_subscriber(void)
+: m_auth_reply_callback(nullptr) {
   __CPP_REDIS_LOG(debug, "cpp_redis::redis_subscriber created");
 }
 
 redis_subscriber::~redis_subscriber(void) {
-  m_client.disconnect();
+  m_client.disconnect(true);
   __CPP_REDIS_LOG(debug, "cpp_redis::redis_subscriber destroyed");
 }
 
 void
-redis_subscriber::connect(const std::string& host, std::size_t port,
-  const disconnection_handler_t& client_disconnection_handler) {
+redis_subscriber::connect(const std::string& host, std::size_t port, const disconnection_handler_t& client_disconnection_handler) {
   __CPP_REDIS_LOG(debug, "cpp_redis::redis_subscriber attempts to connect");
 
   auto disconnection_handler = std::bind(&redis_subscriber::connection_disconnection_handler, this, std::placeholders::_1);
@@ -26,6 +47,18 @@ redis_subscriber::connect(const std::string& host, std::size_t port,
   __CPP_REDIS_LOG(info, "cpp_redis::redis_subscriber connected");
 
   m_disconnection_handler = client_disconnection_handler;
+}
+
+redis_subscriber&
+redis_subscriber::auth(const std::string& password, const reply_callback_t& reply_callback) {
+  __CPP_REDIS_LOG(debug, "cpp_redis::redis_subscriber attempts to authenticate");
+
+  m_client.send({"AUTH", password});
+  m_auth_reply_callback = reply_callback;
+
+  __CPP_REDIS_LOG(info, "cpp_redis::redis_subscriber AUTH command sent");
+
+  return *this;
 }
 
 void
@@ -209,9 +242,19 @@ void
 redis_subscriber::connection_receive_handler(network::redis_connection&, reply& reply) {
   __CPP_REDIS_LOG(info, "cpp_redis::redis_subscriber received reply");
 
-  //! alaway return an array
-  if (!reply.is_array())
+  //! always return an array
+  //! otherwise, if auth was defined, this should be the AUTH reply
+  //! any other replies from the server are considered as unexepected
+  if (!reply.is_array()) {
+    if (m_auth_reply_callback) {
+      __CPP_REDIS_LOG(debug, "cpp_redis::redis_subscriber executes auth callback");
+
+      m_auth_reply_callback(reply);
+      m_auth_reply_callback = nullptr;
+    }
+
     return;
+  }
 
   auto& array = reply.as_array();
 

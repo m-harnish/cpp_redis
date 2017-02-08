@@ -1,3 +1,25 @@
+// The MIT License (MIT)
+//
+// Copyright (c) 2015-2017 Simon Ninon <simon.ninon@gmail.com>
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
 #pragma once
 
 #include <functional>
@@ -12,7 +34,7 @@ namespace cpp_redis {
 class redis_subscriber {
 public:
   //! ctor & dtor
-  redis_subscriber(const std::shared_ptr<network::io_service>& IO = nullptr);
+  redis_subscriber(void);
   ~redis_subscriber(void);
 
   //! copy ctor & assignment operator
@@ -22,10 +44,15 @@ public:
 public:
   //! handle connection
   typedef std::function<void(redis_subscriber&)> disconnection_handler_t;
-  void connect(const std::string& host = "127.0.0.1", std::size_t port = 6379,
-    const disconnection_handler_t& disconnection_handler = nullptr);
+  void connect(const std::string& host = "127.0.0.1", std::size_t port = 6379, const disconnection_handler_t& disconnection_handler = nullptr);
   void disconnect(void);
   bool is_connected(void);
+
+  //! ability to authenticate on the redis server if necessary
+  //! this method should not be called repeatedly as the storage of reply_callback is NOT threadsafe
+  //! calling repeatedly auth() is undefined concerning the execution of the associated callbacks
+  typedef std::function<void(reply&)> reply_callback_t;
+  redis_subscriber& auth(const std::string& password, const reply_callback_t& reply_callback = nullptr);
 
   //! subscribe - unsubscribe
   typedef std::function<void(const std::string&, const std::string&)> subscribe_callback_t;
@@ -68,6 +95,9 @@ private:
   //! thread safety
   std::mutex m_psubscribed_channels_mutex;
   std::mutex m_subscribed_channels_mutex;
+
+  //! auth reply callback
+  reply_callback_t m_auth_reply_callback;
 };
 
 } //! cpp_redis

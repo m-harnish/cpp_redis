@@ -1,3 +1,25 @@
+// The MIT License (MIT)
+//
+// Copyright (c) 2015-2017 Simon Ninon <simon.ninon@gmail.com>
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
 #pragma once
 
 #include <condition_variable>
@@ -15,7 +37,7 @@ namespace cpp_redis {
 class redis_client {
 public:
   //! ctor & dtor
-  redis_client(const std::shared_ptr<network::io_service>& IO = nullptr);
+  redis_client(void);
   ~redis_client(void);
 
   //! copy ctor & assignment operator
@@ -73,10 +95,10 @@ public:
   redis_client& client_pause(int timeout, const reply_callback_t& reply_callback = nullptr);
   redis_client& client_reply(const std::string& mode, const reply_callback_t& reply_callback = nullptr);
   redis_client& client_setname(const std::string& name, const reply_callback_t& reply_callback = nullptr);
-  redis_client& cluster_addslots(const std::vector<std::string>& slots, const reply_callback_t& reply_callback = nullptr);
+  redis_client& cluster_addslots(const std::vector<std::string>& p_slots, const reply_callback_t& reply_callback = nullptr);
   redis_client& cluster_count_failure_reports(const std::string& node_id, const reply_callback_t& reply_callback = nullptr);
   redis_client& cluster_countkeysinslot(const std::string& slot, const reply_callback_t& reply_callback = nullptr);
-  redis_client& cluster_delslots(const std::vector<std::string>& slots, const reply_callback_t& reply_callback = nullptr);
+  redis_client& cluster_delslots(const std::vector<std::string>& p_slots, const reply_callback_t& reply_callback = nullptr);
   redis_client& cluster_failover(const reply_callback_t& reply_callback = nullptr);
   redis_client& cluster_failover(const std::string& mode, const reply_callback_t& reply_callback = nullptr);
   redis_client& cluster_forget(const std::string& node_id, const reply_callback_t& reply_callback = nullptr);
@@ -237,19 +259,35 @@ public:
   // redis_client& zadd(const reply_callback_t& reply_callback = nullptr) key [nx|xx] [ch] [incr] score member [score member ...]
   redis_client& zcard(const std::string& key, const reply_callback_t& reply_callback = nullptr);
   redis_client& zcount(const std::string& key, int min, int max, const reply_callback_t& reply_callback = nullptr);
+  redis_client& zcount(const std::string& key, double min, double max, const reply_callback_t& reply_callback = nullptr);
+  redis_client& zcount(const std::string& key, const std::string& min, const std::string& max, const reply_callback_t& reply_callback = nullptr);
   redis_client& zincrby(const std::string& key, int incr, const std::string& member, const reply_callback_t& reply_callback = nullptr);
+  redis_client& zincrby(const std::string& key, double incr, const std::string& member, const reply_callback_t& reply_callback = nullptr);
+  redis_client& zincrby(const std::string& key, const std::string& incr, const std::string& member, const reply_callback_t& reply_callback = nullptr);
   // redis_client& zinterstore(const reply_callback_t& reply_callback = nullptr) destination numkeys key [key ...] [weights weight [weight ...]] [aggregate sum|min|max]
   redis_client& zlexcount(const std::string& key, int min, int max, const reply_callback_t& reply_callback = nullptr);
+  redis_client& zlexcount(const std::string& key, double min, double max, const reply_callback_t& reply_callback = nullptr);
+  redis_client& zlexcount(const std::string& key, const std::string& min, const std::string& max, const reply_callback_t& reply_callback = nullptr);
   redis_client& zrange(const std::string& key, int start, int stop, bool withscores = false, const reply_callback_t& reply_callback = nullptr);
+  redis_client& zrange(const std::string& key, double start, double stop, bool withscores = false, const reply_callback_t& reply_callback = nullptr);
+  redis_client& zrange(const std::string& key, const std::string& start, const std::string& stop, bool withscores = false, const reply_callback_t& reply_callback = nullptr);
   // redis_client& zrangebylex(const reply_callback_t& reply_callback = nullptr) key min max [limit offset count]
   // redis_client& zrevrangebylex(const reply_callback_t& reply_callback = nullptr) key max min [limit offset count]
   // redis_client& zrangebyscore(const reply_callback_t& reply_callback = nullptr) key min max [withscores] [limit offset count]
   redis_client& zrank(const std::string& key, const std::string& member, const reply_callback_t& reply_callback = nullptr);
   redis_client& zrem(const std::string& key, const std::vector<std::string>& members, const reply_callback_t& reply_callback = nullptr);
   redis_client& zremrangebylex(const std::string& key, int min, int max, const reply_callback_t& reply_callback = nullptr);
+  redis_client& zremrangebylex(const std::string& key, double min, double max, const reply_callback_t& reply_callback = nullptr);
+  redis_client& zremrangebylex(const std::string& key, const std::string& min, const std::string& max, const reply_callback_t& reply_callback = nullptr);
   redis_client& zremrangebyrank(const std::string& key, int start, int stop, const reply_callback_t& reply_callback = nullptr);
+  redis_client& zremrangebyrank(const std::string& key, double start, double stop, const reply_callback_t& reply_callback = nullptr);
+  redis_client& zremrangebyrank(const std::string& key, const std::string& start, const std::string& stop, const reply_callback_t& reply_callback = nullptr);
   redis_client& zremrangebyscore(const std::string& key, int min, int max, const reply_callback_t& reply_callback = nullptr);
+  redis_client& zremrangebyscore(const std::string& key, double min, double max, const reply_callback_t& reply_callback = nullptr);
+  redis_client& zremrangebyscore(const std::string& key, const std::string& min, const std::string& max, const reply_callback_t& reply_callback = nullptr);
   redis_client& zrevrange(const std::string& key, int start, int stop, bool withscores = false, const reply_callback_t& reply_callback = nullptr);
+  redis_client& zrevrange(const std::string& key, double start, double stop, bool withscores = false, const reply_callback_t& reply_callback = nullptr);
+  redis_client& zrevrange(const std::string& key, const std::string& start, const std::string& stop, bool withscores = false, const reply_callback_t& reply_callback = nullptr);
   // redis_client& zrevrangebyscore(const reply_callback_t& reply_callback = nullptr) key max min [withscores] [limit offset count]
   redis_client& zrevrank(const std::string& key, const std::string& member, const reply_callback_t& reply_callback = nullptr);
   redis_client& zscore(const std::string& key, const std::string& member, const reply_callback_t& reply_callback = nullptr);
@@ -286,7 +324,7 @@ private:
   std::mutex m_callbacks_mutex;
   std::mutex m_send_mutex;
   std::condition_variable m_sync_condvar;
-  std::atomic_uint m_callbacks_running;
+  std::atomic<unsigned int> m_callbacks_running = ATOMIC_VAR_INIT(0);
 };
 
 } //! cpp_redis

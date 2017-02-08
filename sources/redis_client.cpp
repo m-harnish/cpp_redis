@@ -1,16 +1,36 @@
+// The MIT License (MIT)
+//
+// Copyright (c) 2015-2017 Simon Ninon <simon.ninon@gmail.com>
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
 #include <cpp_redis/redis_client.hpp>
 #include <cpp_redis/redis_error.hpp>
 
 namespace cpp_redis {
 
-redis_client::redis_client(const std::shared_ptr<network::io_service>& io_service)
-: m_client(io_service)
-, m_callbacks_running(0) {
+redis_client::redis_client(void) {
   __CPP_REDIS_LOG(debug, "cpp_redis::redis_client created");
 }
 
 redis_client::~redis_client(void) {
-  m_client.disconnect();
+  m_client.disconnect(true);
   __CPP_REDIS_LOG(debug, "cpp_redis::redis_client destroyed");
 }
 
@@ -72,9 +92,10 @@ redis_client::sync_commit(void) {
   return *this;
 }
 
-redis_client& redis_client::before_callback(const std::function<void(reply&, const reply_callback_t& callback)>& callback) {
-	m_before_callback_handler = callback;
-	return *this;
+redis_client&
+redis_client::before_callback(const std::function<void(reply&, const reply_callback_t& callback)>& callback) {
+  m_before_callback_handler = callback;
+  return *this;
 }
 
 void
@@ -109,13 +130,17 @@ redis_client::connection_receive_handler(network::redis_connection&, reply& repl
   if (m_before_callback_handler) {
     __CPP_REDIS_LOG(debug, "cpp_redis::redis_client executes reply callback through custom before callback handler");
     m_before_callback_handler(reply, callback);
-  } else if (callback) {
+  }
+  else if (callback) {
     __CPP_REDIS_LOG(debug, "cpp_redis::redis_client executes reply callback");
     callback(reply);
   }
 
-  m_callbacks_running -= 1;
-  m_sync_condvar.notify_all();
+  {
+    std::lock_guard<std::mutex> lock(m_callbacks_mutex);
+    m_callbacks_running -= 1;
+    m_sync_condvar.notify_all();
+  }
 }
 
 void
@@ -124,6 +149,8 @@ redis_client::clear_callbacks(void) {
 
   std::queue<reply_callback_t> empty;
   std::swap(m_callbacks, empty);
+
+  m_sync_condvar.notify_all();
 }
 
 void
@@ -259,9 +286,9 @@ redis_client::client_setname(const std::string& name, const reply_callback_t& re
 }
 
 redis_client&
-redis_client::cluster_addslots(const std::vector<std::string>& slots, const reply_callback_t& reply_callback) {
+redis_client::cluster_addslots(const std::vector<std::string>& p_slots, const reply_callback_t& reply_callback) {
   std::vector<std::string> cmd = {"CLUSTER", "ADDSLOTS"};
-  cmd.insert(cmd.end(), slots.begin(), slots.end());
+  cmd.insert(cmd.end(), p_slots.begin(), p_slots.end());
   send(cmd, reply_callback);
   return *this;
 }
@@ -279,9 +306,9 @@ redis_client::cluster_countkeysinslot(const std::string& slot, const reply_callb
 }
 
 redis_client&
-redis_client::cluster_delslots(const std::vector<std::string>& slots, const reply_callback_t& reply_callback) {
+redis_client::cluster_delslots(const std::vector<std::string>& p_slots, const reply_callback_t& reply_callback) {
   std::vector<std::string> cmd = {"CLUSTER", "DELSLOTS"};
-  cmd.insert(cmd.end(), slots.begin(), slots.end());
+  cmd.insert(cmd.end(), p_slots.begin(), p_slots.end());
   send(cmd, reply_callback);
   return *this;
 }
@@ -1318,8 +1345,32 @@ redis_client::zcount(const std::string& key, int min, int max, const reply_callb
 }
 
 redis_client&
+redis_client::zcount(const std::string& key, double min, double max, const reply_callback_t& reply_callback) {
+  send({"ZCOUNT", key, std::to_string(min), std::to_string(max)}, reply_callback);
+  return *this;
+}
+
+redis_client&
+redis_client::zcount(const std::string& key, const std::string& min, const std::string& max, const reply_callback_t& reply_callback) {
+  send({"ZCOUNT", key, min, max}, reply_callback);
+  return *this;
+}
+
+redis_client&
 redis_client::zincrby(const std::string& key, int incr, const std::string& member, const reply_callback_t& reply_callback) {
   send({"ZINCRBY", key, std::to_string(incr), member}, reply_callback);
+  return *this;
+}
+
+redis_client&
+redis_client::zincrby(const std::string& key, double incr, const std::string& member, const reply_callback_t& reply_callback) {
+  send({"ZINCRBY", key, std::to_string(incr), member}, reply_callback);
+  return *this;
+}
+
+redis_client&
+redis_client::zincrby(const std::string& key, const std::string& incr, const std::string& member, const reply_callback_t& reply_callback) {
+  send({"ZINCRBY", key, incr, member}, reply_callback);
   return *this;
 }
 
@@ -1330,11 +1381,41 @@ redis_client::zlexcount(const std::string& key, int min, int max, const reply_ca
 }
 
 redis_client&
+redis_client::zlexcount(const std::string& key, double min, double max, const reply_callback_t& reply_callback) {
+  send({"ZLEXCOUNT", key, std::to_string(min), std::to_string(max)}, reply_callback);
+  return *this;
+}
+
+redis_client&
+redis_client::zlexcount(const std::string& key, const std::string& min, const std::string& max, const reply_callback_t& reply_callback) {
+  send({"ZLEXCOUNT", key, min, max}, reply_callback);
+  return *this;
+}
+
+redis_client&
 redis_client::zrange(const std::string& key, int start, int stop, bool withscores, const reply_callback_t& reply_callback) {
   if (withscores)
     send({"ZRANGE", key, std::to_string(start), std::to_string(stop), "WITHSCORES"}, reply_callback);
   else
     send({"ZRANGE", key, std::to_string(start), std::to_string(stop)}, reply_callback);
+  return *this;
+}
+
+redis_client&
+redis_client::zrange(const std::string& key, double start, double stop, bool withscores, const reply_callback_t& reply_callback) {
+  if (withscores)
+    send({"ZRANGE", key, std::to_string(start), std::to_string(stop), "WITHSCORES"}, reply_callback);
+  else
+    send({"ZRANGE", key, std::to_string(start), std::to_string(stop)}, reply_callback);
+  return *this;
+}
+
+redis_client&
+redis_client::zrange(const std::string& key, const std::string& start, const std::string& stop, bool withscores, const reply_callback_t& reply_callback) {
+  if (withscores)
+    send({"ZRANGE", key, start, stop, "WITHSCORES"}, reply_callback);
+  else
+    send({"ZRANGE", key, start, stop}, reply_callback);
   return *this;
 }
 
@@ -1359,8 +1440,32 @@ redis_client::zremrangebylex(const std::string& key, int min, int max, const rep
 }
 
 redis_client&
+redis_client::zremrangebylex(const std::string& key, double min, double max, const reply_callback_t& reply_callback) {
+  send({"ZREMRANGEBYLEX", key, std::to_string(min), std::to_string(max)}, reply_callback);
+  return *this;
+}
+
+redis_client&
+redis_client::zremrangebylex(const std::string& key, const std::string& min, const std::string& max, const reply_callback_t& reply_callback) {
+  send({"ZREMRANGEBYLEX", key, min, max}, reply_callback);
+  return *this;
+}
+
+redis_client&
 redis_client::zremrangebyrank(const std::string& key, int start, int stop, const reply_callback_t& reply_callback) {
   send({"ZREMRANGEBYRANK", key, std::to_string(start), std::to_string(stop)}, reply_callback);
+  return *this;
+}
+
+redis_client&
+redis_client::zremrangebyrank(const std::string& key, double start, double stop, const reply_callback_t& reply_callback) {
+  send({"ZREMRANGEBYRANK", key, std::to_string(start), std::to_string(stop)}, reply_callback);
+  return *this;
+}
+
+redis_client&
+redis_client::zremrangebyrank(const std::string& key, const std::string& start, const std::string& stop, const reply_callback_t& reply_callback) {
+  send({"ZREMRANGEBYRANK", key, start, stop}, reply_callback);
   return *this;
 }
 
@@ -1371,11 +1476,41 @@ redis_client::zremrangebyscore(const std::string& key, int min, int max, const r
 }
 
 redis_client&
+redis_client::zremrangebyscore(const std::string& key, double min, double max, const reply_callback_t& reply_callback) {
+  send({"ZREMRANGEBYSCORE", key, std::to_string(min), std::to_string(max)}, reply_callback);
+  return *this;
+}
+
+redis_client&
+redis_client::zremrangebyscore(const std::string& key, const std::string& min, const std::string& max, const reply_callback_t& reply_callback) {
+  send({"ZREMRANGEBYSCORE", key, min, max}, reply_callback);
+  return *this;
+}
+
+redis_client&
 redis_client::zrevrange(const std::string& key, int start, int stop, bool withscores, const reply_callback_t& reply_callback) {
   if (withscores)
     send({"ZREVRANGE", key, std::to_string(start), std::to_string(stop), "WITHSCORES"}, reply_callback);
   else
     send({"ZREVRANGE", key, std::to_string(start), std::to_string(stop)}, reply_callback);
+  return *this;
+}
+
+redis_client&
+redis_client::zrevrange(const std::string& key, double start, double stop, bool withscores, const reply_callback_t& reply_callback) {
+  if (withscores)
+    send({"ZREVRANGE", key, std::to_string(start), std::to_string(stop), "WITHSCORES"}, reply_callback);
+  else
+    send({"ZREVRANGE", key, std::to_string(start), std::to_string(stop)}, reply_callback);
+  return *this;
+}
+
+redis_client&
+redis_client::zrevrange(const std::string& key, const std::string& start, const std::string& stop, bool withscores, const reply_callback_t& reply_callback) {
+  if (withscores)
+    send({"ZREVRANGE", key, start, stop, "WITHSCORES"}, reply_callback);
+  else
+    send({"ZREVRANGE", key, start, stop}, reply_callback);
   return *this;
 }
 

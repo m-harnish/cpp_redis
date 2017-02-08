@@ -20,23 +20,16 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include <gtest/gtest.h>
+#include <cpp_redis/cpp_redis>
+
+#include <iostream>
 
 #ifdef _WIN32
 #include <Winsock2.h>
 #endif /* _WIN32 */
 
-//! For debugging purpose, uncomment
-// #include <cpp_redis/cpp_redis>
-// #include <memory>
-// #include <tacopie/tacopie>
-
 int
-main(int argc, char** argv) {
-//! For debugging purpose, uncomment
-// cpp_redis::active_logger = std::unique_ptr<cpp_redis::logger>(new cpp_redis::logger(cpp_redis::logger::log_level::debug));
-// tacopie::active_logger   = std::unique_ptr<tacopie::logger>(new tacopie::logger(tacopie::logger::log_level::debug));
-
+main(void) {
 #ifdef _WIN32
   //! Windows netword DLL init
   WORD version = MAKEWORD(2, 2);
@@ -48,13 +41,27 @@ main(int argc, char** argv) {
   }
 #endif /* _WIN32 */
 
-  ::testing::InitGoogleTest(&argc, argv);
+  //! Enable logging
+  cpp_redis::active_logger = std::unique_ptr<cpp_redis::logger>(new cpp_redis::logger);
 
-  int ret = RUN_ALL_TESTS();
+  cpp_redis::sync_client client;
+
+  client.connect("127.0.0.1", 6379, [](cpp_redis::redis_client&) {
+    std::cout << "client disconnected (disconnection handler)" << std::endl;
+  });
+
+  cpp_redis::reply r = client.set("hello", "42");
+  std::cout << "set 'hello' 42: " << r << std::endl;
+
+  r = client.decrby("hello", 12);
+  std::cout << "decrby 'hello' 12: " << r << std::endl;
+
+  r = client.get("hello");
+  std::cout << "get 'hello': " << r << std::endl;
 
 #ifdef _WIN32
   WSACleanup();
 #endif /* _WIN32 */
 
-  return ret;
+  return 0;
 }
